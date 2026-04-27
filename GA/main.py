@@ -10,30 +10,23 @@ from tkcalendar import DateEntry
 
 import database as db
 
-# ------------------- Диалог переменной -------------------
 class VarDialog(tk.Toplevel):
     def __init__(self, parent, title="Добавить переменную", var_data=None):
         super().__init__(parent)
         self.title(title)
         self.geometry("550x580")
         self.parent = parent
-        self.var_data = var_data  # (id, name, type, formula, condition, actions, sequence, parent_id, order_idx)
-        
+        self.var_data = var_data
         self.result = None
-        
-        # Список существующих групп
         all_vars = db.get_variables()
         self.groups = [(v[0], v[1]) for v in all_vars if v[2] == 'group']
         if var_data and var_data[2] == 'group':
             self.groups = [g for g in self.groups if g[0] != var_data[0]]
         self.group_names = [""] + [f"{name} (id{id})" for id, name in self.groups]
-        
-        # Поля
         row = 0
         ttk.Label(self, text="Имя:").grid(row=row, column=0, padx=5, pady=5, sticky='e')
         self.entry_name = ttk.Entry(self, width=30)
         self.entry_name.grid(row=row, column=1, padx=5, pady=5, columnspan=2)
-        
         row += 1
         ttk.Label(self, text="Тип:").grid(row=row, column=0, padx=5, pady=5, sticky='e')
         self.type_var = tk.StringVar()
@@ -42,62 +35,47 @@ class VarDialog(tk.Toplevel):
                                         state='readonly')
         self.type_combo.grid(row=row, column=1, padx=5, pady=5, sticky='w')
         self.type_combo.bind('<<ComboboxSelected>>', self.on_type_change)
-        
         row += 1
         ttk.Label(self, text="Родительская группа:").grid(row=row, column=0, padx=5, pady=5, sticky='e')
         self.parent_var = tk.StringVar()
         self.parent_combo = ttk.Combobox(self, textvariable=self.parent_var, values=self.group_names, state='readonly')
         self.parent_combo.grid(row=row, column=1, padx=5, pady=5, sticky='w')
-        
         row += 1
-        # Поле для формулы (только для number)
         self.formula_label = ttk.Label(self, text="Формула (опционально):")
         self.formula_label.grid(row=row, column=0, padx=5, pady=5, sticky='e')
         self.entry_formula = ttk.Entry(self, width=40)
         self.entry_formula.grid(row=row, column=1, padx=5, pady=5, columnspan=2)
-        # Подсказка
         self.tooltip = tk.Label(self, text="Пример: v1 + v2*2, math.sin(v1). Доступны v1,v2,... и модуль math", 
                                  fg="gray", font=("Arial", 8))
         self.tooltip.grid(row=row+1, column=1, columnspan=2, sticky='w', padx=5)
         self.tooltip.grid_remove()
-        
-        def on_formula_focus_in(event):
+        def on_focus_in(event):
             self.tooltip.grid()
-        def on_formula_focus_out(event):
+        def on_focus_out(event):
             self.tooltip.grid_remove()
-        self.entry_formula.bind("<FocusIn>", on_formula_focus_in)
-        self.entry_formula.bind("<FocusOut>", on_formula_focus_out)
-        
+        self.entry_formula.bind("<FocusIn>", on_focus_in)
+        self.entry_formula.bind("<FocusOut>", on_focus_out)
         row += 2
-        # Поле для условия (только для boolean)
         self.condition_label = ttk.Label(self, text="Условие (например v1>10):")
         self.condition_label.grid(row=row, column=0, padx=5, pady=5, sticky='e')
         self.entry_condition = ttk.Entry(self, width=40)
         self.entry_condition.grid(row=row, column=1, padx=5, pady=5, columnspan=2)
-        
         row += 1
-        # Поле для действий boolean
         self.actions_label = ttk.Label(self, text="Действия (JSON, например {'v2':'=v1+5'}):")
         self.actions_label.grid(row=row, column=0, padx=5, pady=5, sticky='ne')
         self.text_actions = tk.Text(self, height=4, width=40)
         self.text_actions.grid(row=row, column=1, padx=5, pady=5, columnspan=2)
-        
         row += 1
-        # Поле для последовательности (для list)
         self.sequence_label = ttk.Label(self, text="Последовательность (через запятую, операции: +2, *3, =10):")
         self.sequence_label.grid(row=row, column=0, padx=5, pady=5, sticky='e')
         self.entry_sequence = ttk.Entry(self, width=40)
         self.entry_sequence.grid(row=row, column=1, padx=5, pady=5, columnspan=2)
-        
         row += 1
         btn_frame = ttk.Frame(self)
         btn_frame.grid(row=row, column=0, columnspan=3, pady=10)
         ttk.Button(btn_frame, text="OK", command=self.ok).pack(side='left', padx=5)
         ttk.Button(btn_frame, text="Отмена", command=self.cancel).pack(side='left', padx=5)
-        
-        # Скрыть поля, которые не относятся к выбранному типу
         self.hide_unused_fields()
-        
         if var_data:
             self.entry_name.insert(0, var_data[1])
             self.type_var.set(var_data[2])
@@ -119,7 +97,6 @@ class VarDialog(tk.Toplevel):
     
     def hide_unused_fields(self):
         typ = self.type_var.get()
-        # Формула только для number
         if typ == 'number':
             self.formula_label.grid()
             self.entry_formula.grid()
@@ -127,8 +104,6 @@ class VarDialog(tk.Toplevel):
             self.formula_label.grid_remove()
             self.entry_formula.grid_remove()
             self.tooltip.grid_remove()
-        
-        # Условия и действия только для boolean
         if typ == 'boolean':
             self.condition_label.grid()
             self.entry_condition.grid()
@@ -139,8 +114,6 @@ class VarDialog(tk.Toplevel):
             self.entry_condition.grid_remove()
             self.actions_label.grid_remove()
             self.text_actions.grid_remove()
-        
-        # Последовательность только для list
         if typ == 'list':
             self.sequence_label.grid()
             self.entry_sequence.grid()
@@ -157,14 +130,12 @@ class VarDialog(tk.Toplevel):
         if not name or not typ:
             messagebox.showerror("Ошибка", "Заполните имя и тип")
             return
-        
         parent_id = None
         parent_text = self.parent_var.get()
         if parent_text and parent_text.strip():
             match = re.search(r'id(\d+)', parent_text)
             if match:
                 parent_id = int(match.group(1))
-        
         formula = self.entry_formula.get().strip() if typ == 'number' else None
         condition = self.entry_condition.get().strip() if typ == 'boolean' else None
         sequence = self.entry_sequence.get().strip() if typ == 'list' else None
@@ -177,7 +148,6 @@ class VarDialog(tk.Toplevel):
                 except:
                     messagebox.showerror("Ошибка", "Действия должны быть в формате JSON")
                     return
-        
         self.result = (name, typ, formula, condition, actions, sequence, parent_id)
         self.destroy()
     
@@ -185,35 +155,24 @@ class VarDialog(tk.Toplevel):
         self.result = None
         self.destroy()
 
-
-# ------------------- Основное приложение -------------------
 class App:
     def __init__(self, root):
         self.root = root
         self.root.title("Анализатор партий настольных игр")
         self.root.geometry("1200x800")
-        
         db.init_db()
-        
         self.notebook = ttk.Notebook(root)
         self.notebook.pack(fill='both', expand=True)
-        
-        # Вкладка переменных
         self.frame_vars = ttk.Frame(self.notebook)
         self.notebook.add(self.frame_vars, text="Переменные")
         self.setup_variables_tab()
-        
-        # Вкладка ввода данных
         self.frame_input = ttk.Frame(self.notebook)
         self.notebook.add(self.frame_input, text="Ввод данных")
         self.setup_input_tab()
-        
-        # Вкладка аналитики
         self.frame_analytics = ttk.Frame(self.notebook)
         self.notebook.add(self.frame_analytics, text="Аналитика")
         self.setup_analytics_tab()
     
-    # ---------- Переменные ----------
     def setup_variables_tab(self):
         btn_frame = ttk.Frame(self.frame_vars)
         btn_frame.pack(pady=5)
@@ -224,7 +183,6 @@ class App:
         ttk.Button(btn_frame, text="Вниз", command=self.move_var_down).pack(side='left', padx=5)
         ttk.Button(btn_frame, text="Экспорт", command=self.export_data).pack(side='left', padx=5)
         ttk.Button(btn_frame, text="Импорт", command=self.import_data).pack(side='left', padx=5)
-        
         self.tree_vars = ttk.Treeview(self.frame_vars, columns=('type', 'info'), show='tree headings')
         self.tree_vars.heading('#0', text='Имя')
         self.tree_vars.heading('type', text='Тип')
@@ -233,11 +191,9 @@ class App:
         self.tree_vars.column('type', width=100)
         self.tree_vars.column('info', width=300)
         self.tree_vars.pack(fill='both', expand=True, padx=5, pady=5)
-        
         scrollbar = ttk.Scrollbar(self.tree_vars, orient='vertical', command=self.tree_vars.yview)
         self.tree_vars.configure(yscrollcommand=scrollbar.set)
         scrollbar.pack(side='right', fill='y')
-        
         self.refresh_vars_tree()
     
     def refresh_vars_tree(self):
@@ -278,7 +234,6 @@ class App:
         all_vars = db.get_variables(include_deleted=False)
         for v in all_vars:
             if v[0] == var_id:
-                # v = (id, name, type, formula, condition, actions, sequence, parent_id, order_idx)
                 dlg = VarDialog(self.root, "Изменить переменную", var_data=v[:8])
                 self.root.wait_window(dlg)
                 if dlg.result:
@@ -372,7 +327,6 @@ class App:
         self.refresh_analytics_vars()
         messagebox.showinfo("Импорт", "Данные успешно импортированы")
     
-    # ---------- Ввод данных ----------
     def setup_input_tab(self):
         self.input_canvas = tk.Canvas(self.frame_input)
         self.input_scrollbar = ttk.Scrollbar(self.frame_input, orient='vertical', command=self.input_canvas.yview)
@@ -382,8 +336,6 @@ class App:
         self.input_canvas.configure(yscrollcommand=self.input_scrollbar.set)
         self.input_canvas.pack(side='left', fill='both', expand=True)
         self.input_scrollbar.pack(side='right', fill='y')
-        
-        # Панель управления ходами
         self.step_frame = ttk.Frame(self.frame_input)
         self.step_frame.pack(side='top', fill='x', padx=5, pady=5)
         ttk.Button(self.step_frame, text="-1 ход", command=self.prev_step).pack(side='left', padx=5)
@@ -391,11 +343,9 @@ class App:
         self.step_label.pack(side='left', padx=5)
         ttk.Button(self.step_frame, text="+1 ход", command=self.next_step).pack(side='left', padx=5)
         ttk.Button(self.step_frame, text="Сохранить партию", command=self.save_game).pack(side='right', padx=5)
-        
         self.current_step = 0
-        self.step_values = {}  # { var_id: [value_step0, value_step1, ...] }
-        self.input_widgets = {}  # { var_id: (typ, widget) }
-        
+        self.step_values = {}
+        self.input_widgets = {}
         self.refresh_input_form()
     
     def refresh_input_form(self):
@@ -422,7 +372,6 @@ class App:
             ttk.Label(frame, text=node['name']+':').pack(side='left', padx=5)
             var_id = node['id']
             typ = node['type']
-            
             if typ == 'number':
                 entry = ttk.Entry(frame)
                 entry.pack(side='left', fill='x', expand=True)
@@ -437,7 +386,6 @@ class App:
                 check.pack(side='left')
                 self.input_widgets[var_id] = ('boolean', var_bool)
             elif typ == 'date':
-                # Дата не редактируется, просто показываем текущую дату
                 date_label = ttk.Label(frame, text="автоматически")
                 date_label.pack(side='left')
                 self.input_widgets[var_id] = ('date', None)
@@ -581,36 +529,29 @@ class App:
         self.current_step = 0
         self.refresh_input_form()
     
-    # ---------- Аналитика ----------
     def setup_analytics_tab(self):
         control_frame = ttk.Frame(self.frame_analytics)
         control_frame.pack(side='top', fill='x', padx=5, pady=5)
-        
         ttk.Label(control_frame, text="X (номер хода или переменная):").grid(row=0, column=0)
         self.x_combo = ttk.Combobox(control_frame, state='readonly', width=25)
         self.x_combo.grid(row=0, column=1, padx=5)
-        
         ttk.Label(control_frame, text="Y:").grid(row=1, column=0)
         self.y_combo = ttk.Combobox(control_frame, state='readonly', width=25)
         self.y_combo.grid(row=1, column=1, padx=5)
-        
         ttk.Label(control_frame, text="Тип графика:").grid(row=2, column=0)
         self.chart_type = tk.StringVar(value='line')
         chart_combo = ttk.Combobox(control_frame, textvariable=self.chart_type,
                                     values=['line', 'scatter', 'bar'], state='readonly', width=10)
         chart_combo.grid(row=2, column=1, sticky='w', padx=5)
-        
         ttk.Button(control_frame, text="Построить", command=self.plot_graph).grid(row=3, column=0, columnspan=2, pady=10)
         ttk.Button(control_frame, text="Очистить графики", command=self.clear_plots).grid(row=4, column=0, columnspan=2)
-        
         self.plot_notebook = ttk.Notebook(self.frame_analytics)
         self.plot_notebook.pack(fill='both', expand=True, padx=5, pady=5)
         self.plot_notebook.bind("<MouseWheel>", self.on_mousewheel)
-        
         self.refresh_analytics_vars()
     
     def refresh_analytics_vars(self):
-        vars_list = db.get_variables()  # уже только не удалённые
+        vars_list = db.get_variables()
         names = ["Номер хода"] + [f"{v[1]} (id{v[0]})" for v in vars_list]
         self.x_combo['values'] = names
         self.y_combo['values'] = names
@@ -631,16 +572,14 @@ class App:
         if not x_text or not y_text:
             messagebox.showwarning("Предупреждение", "Выберите X и Y")
             return
-        
         use_step = (x_text == "Номер хода")
-        
         if use_step:
             match_y = re.search(r'id(\d+)', y_text)
             if not match_y:
                 messagebox.showerror("Ошибка", "Не удалось определить Y")
                 return
             y_id = int(match_y.group(1))
-            values = db.get_values_for_variable(y_id)  # (game_id, step, value)
+            values = db.get_values_for_variable(y_id)
             step_values = {}
             for _, step, val in values:
                 try:
@@ -682,10 +621,8 @@ class App:
             x_vals = [p[0] for p in points]
             y_vals = [p[1] for p in points]
             title = f"{y_text} от {x_text}"
-        
         tab = ttk.Frame(self.plot_notebook)
         self.plot_notebook.add(tab, text=f"График {len(self.plot_notebook.tabs())+1}")
-        
         fig = Figure(figsize=(8,5), dpi=100)
         ax = fig.add_subplot(111)
         chart = self.chart_type.get()
@@ -695,16 +632,13 @@ class App:
             ax.scatter(x_vals, y_vals, color='blue')
         elif chart == 'bar':
             ax.bar(range(len(x_vals)), y_vals, tick_label=[str(round(x,2)) for x in x_vals])
-        
         ax.set_xlabel(x_text)
         ax.set_ylabel(y_text)
         ax.set_title(title)
         ax.grid(True)
-        
         canvas = FigureCanvasTkAgg(fig, master=tab)
         canvas.draw()
         canvas.get_tk_widget().pack(fill='both', expand=True)
-
 
 if __name__ == "__main__":
     root = tk.Tk()
