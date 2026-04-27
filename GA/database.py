@@ -6,7 +6,6 @@ DB_NAME = "stats.db"
 def init_db():
     conn = sqlite3.connect(DB_NAME)
     c = conn.cursor()
-    
     c.execute('''CREATE TABLE IF NOT EXISTS variables (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     name TEXT NOT NULL,
@@ -16,8 +15,6 @@ def init_db():
                     order_idx INTEGER DEFAULT 0,
                     FOREIGN KEY (parent_id) REFERENCES variables(id)
                 )''')
-    
-    # Добавляем недостающие столбцы
     c.execute("PRAGMA table_info(variables)")
     existing = [col[1] for col in c.fetchall()]
     if 'formula' not in existing:
@@ -28,12 +25,10 @@ def init_db():
         c.execute("ALTER TABLE variables ADD COLUMN actions TEXT")
     if 'sequence' not in existing:
         c.execute("ALTER TABLE variables ADD COLUMN sequence TEXT")
-    
     c.execute('''CREATE TABLE IF NOT EXISTS games (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
                 )''')
-    
     c.execute('''CREATE TABLE IF NOT EXISTS steps (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     game_id INTEGER NOT NULL,
@@ -43,7 +38,6 @@ def init_db():
                     FOREIGN KEY (game_id) REFERENCES games(id) ON DELETE CASCADE,
                     FOREIGN KEY (variable_id) REFERENCES variables(id) ON DELETE CASCADE
                 )''')
-    
     conn.commit()
     conn.close()
 
@@ -84,7 +78,6 @@ def get_variables_tree():
     c.execute("SELECT id, name, type, formula, condition, actions, sequence, parent_id FROM variables WHERE deleted=0 ORDER BY order_idx")
     rows = c.fetchall()
     conn.close()
-    
     nodes = {}
     for row in rows:
         node_id, name, typ, formula, condition, actions, sequence, parent_id = row
@@ -147,12 +140,10 @@ def update_variable(var_id, name, var_type, formula=None, condition=None, action
     conn.close()
 
 def save_game(values_dict, steps_count):
-    """values_dict: { var_id: [value_step0, value_step1, ...] }"""
     conn = sqlite3.connect(DB_NAME)
     c = conn.cursor()
     c.execute("INSERT INTO games DEFAULT VALUES")
     game_id = c.lastrowid
-    
     for step in range(steps_count):
         for var_id, step_values in values_dict.items():
             if step < len(step_values):
@@ -186,7 +177,6 @@ def get_all_games():
     return result
 
 def get_values_for_variable(var_id):
-    """Возвращает список кортежей (game_id, step_number, value)"""
     conn = sqlite3.connect(DB_NAME)
     c = conn.cursor()
     c.execute("SELECT game_id, step_number, value FROM steps WHERE variable_id=? ORDER BY game_id, step_number", (var_id,))
